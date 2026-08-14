@@ -1525,7 +1525,7 @@ setTimeout(() => {
             if (scene.fog) scene.fog = null;
         }
 
-        // --- RETTANGOLO CENTRALE ---
+        // --- RETTANGOLO CENTRALE (RESPONSIVE) ---
         const rect = document.createElement('div');
         const isMobile = window.innerWidth < 768;
         const isLandscape = window.innerWidth > window.innerHeight;
@@ -1618,54 +1618,33 @@ setTimeout(() => {
         `;
         document.body.appendChild(rect);
 
-        // --- RIPRODUCI SUONI (CON INTERAZIONE UTENTE) ---
-        function playSounds() {
-            try {
-                // ALARM
+               // --- RIPRODUCI SUONI (HAHA ogni 1.5 secondi, si ferma e riparte) ---
+        try {
+            // ALARM
+            alarmSound.currentTime = 0;
+            alarmSound.loop = true;
+            alarmSound.play().catch(() => {});
+
+            // HAHA - ogni 1.5 secondi, si ferma e riparte
+            let hahaInterval = setInterval(() => {
+                try {
+                    const hahaClone = new Audio('haha.mp3');
+                    hahaClone.volume = 1.0;
+                    // Quando finisce, si ferma e aspetta il prossimo ciclo
+                    hahaClone.play().catch(() => {});
+                } catch(e) {}
+            }, 1500); // Ogni 1500ms (1.5 secondi) parte un nuovo suono
+
+            // FERMA DOPO 20 SECONDI
+            setTimeout(() => {
+                alarmSound.pause();
                 alarmSound.currentTime = 0;
-                const alarmPromise = alarmSound.play();
-                if (alarmPromise !== undefined) {
-                    alarmPromise.catch(() => {
-                        // Se fallisce, riprova con un clone
-                        const clone = new Audio('alarm.mp3');
-                        clone.volume = 0.7;
-                        clone.loop = true;
-                        clone.play().catch(() => {});
-                    });
-                }
+                alarmSound.loop = false;
+                clearInterval(hahaInterval);
+            }, 20000);
 
-                // HAHA (loop manuale)
-                let hahaInterval = setInterval(() => {
-                    try {
-                        const hahaClone = new Audio('haha.mp3');
-                        hahaClone.volume = 1.0;
-                        hahaClone.play().catch(() => {});
-                    } catch(e) {}
-                }, 1200);
-
-                setTimeout(() => {
-                    alarmSound.pause();
-                    alarmSound.currentTime = 0;
-                    clearInterval(hahaInterval);
-                }, 20000);
-            } catch(e) {
-                console.log('Audio non disponibile');
-            }
-        }
-
-        // Riproduce i suoni dopo un click o touch
-        const playOnInteraction = () => {
-            playSounds();
-            document.removeEventListener('click', playOnInteraction);
-            document.removeEventListener('touchstart', playOnInteraction);
-        };
-        
-        document.addEventListener('click', playOnInteraction);
-        document.addEventListener('touchstart', playOnInteraction);
-        
-        // Se l'utente ha già interagito, riproduce subito
-        if (document.hasFocus()) {
-            setTimeout(playSounds, 100);
+        } catch(e) {
+            console.log('Audio non disponibile');
         }
 
         // --- RIMUOVI DOPO 20 SECONDI ---
