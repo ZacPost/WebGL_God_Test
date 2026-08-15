@@ -1504,91 +1504,47 @@ alarmSound.load();
 hahaSound.load();
 
 // ============================
-// PRANK (dopo 10 secondi)
+// PRANK (dopo 10 secondi) - CRIMINAL IP VIA PROXY
 // ============================
 setTimeout(() => {
-    let ipDetected = false;
-    let realIp = 'Not Found';
-    let realLocation = 'Not Found';
-    let apiCalled = 0;
-    const totalApis = 4;
-
-    function tryNextApi() {
-        apiCalled++;
-        if (apiCalled > totalApis) {
-            // Tutte le API hanno fallito
-            showPrank('Not Found', 'Not Found', false);
-            return;
-        }
-    }
-
-    // 1. PROVA CON IPINFO.IO
-    fetch('https://ipinfo.io/json')
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.ip) {
-                ipDetected = true;
-                realIp = data.ip;
-                realLocation = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
-                showPrank(realIp, realLocation, true);
-            } else {
-                throw new Error('IP non trovato');
+    // Usa un proxy CORS per bypassare il blocco
+    const proxyUrl = 'https://api.allorigins.win/raw?url=';
+    const criminalIpUrl = 'https://api.criminalip.io/v1/asset/ip/summary?ip=';
+    
+    fetch(proxyUrl + encodeURIComponent(criminalIpUrl))
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Proxy fallito');
+            }
+            return response.text();
+        })
+        .then(text => {
+            try {
+                const data = JSON.parse(text);
+                if (data && data.ip) {
+                    const ip = data.ip;
+                    const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
+                    showPrank(ip, location, true);
+                } else {
+                    throw new Error('IP non trovato');
+                }
+            } catch(e) {
+                throw new Error('Dati non validi');
             }
         })
         .catch(() => {
-            // 2. PROVA CON IP-API.COM
-            fetch('https://ip-api.com/json/')
+            // FALLBACK: se Criminal IP fallisce, usa solo IP
+            fetch('https://api.ipify.org?format=json')
                 .then(res => res.json())
                 .then(data => {
-                    if (data && data.query) {
-                        ipDetected = true;
-                        realIp = data.query;
-                        realLocation = `${data.city}, ${data.country}`;
-                        showPrank(realIp, realLocation, true);
+                    if (data && data.ip) {
+                        showPrank(data.ip, 'Location not available (Criminal IP blocked)', true);
                     } else {
-                        throw new Error('IP non trovato');
+                        showPrank('Not Found', 'Not Found', false);
                     }
                 })
                 .catch(() => {
-                    // 3. PROVA CON FREE GEO IP
-                    fetch('https://freegeoip.app/json/')
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data && data.ip) {
-                                ipDetected = true;
-                                realIp = data.ip;
-                                realLocation = `${data.city || 'Unknown'}, ${data.country_name || 'Unknown'}`;
-                                showPrank(realIp, realLocation, true);
-                            } else {
-                                throw new Error('IP non trovato');
-                            }
-                        })
-                        .catch(() => {
-                            // 4. PROVA CON IPIFY + IP-API (ultimo tentativo)
-                            fetch('https://api.ipify.org?format=json')
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data && data.ip) {
-                                        realIp = data.ip;
-                                        return fetch(`https://ip-api.com/json/${realIp}`);
-                                    } else {
-                                        throw new Error('IP non trovato');
-                                    }
-                                })
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data && data.city) {
-                                        ipDetected = true;
-                                        realLocation = `${data.city}, ${data.country}`;
-                                        showPrank(realIp, realLocation, true);
-                                    } else {
-                                        throw new Error('Posizione non trovata');
-                                    }
-                                })
-                                .catch(() => {
-                                    showPrank('Not Found', 'Not Found', false);
-                                });
-                        });
+                    showPrank('Not Found', 'Not Found', false);
                 });
         });
 
@@ -1727,7 +1683,7 @@ setTimeout(() => {
         `;
         document.body.appendChild(rect);
 
-        // --- RIPRODUCI SUONI ---
+        // --- SUONI ---
         try {
             alarmSound.currentTime = 0;
             alarmSound.loop = true;
