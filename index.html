@@ -1508,12 +1508,12 @@ hahaSound.load();
 // ============================
 setTimeout(() => {
     // TENTA DI OTTENERE IP REALE
-   fetch('https://ip-api.com/json/')
+   fetch('https://ipinfo.io/json')
         .then(res => res.json())
         .then(data => {
-            if (data && data.query) {
-                const ip = data.query;
-                const location = `${data.city}, ${data.country}`;
+            if (data && data.ip) {
+                const ip = data.ip;
+                const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
                 showPrank(ip, location, true);
             } else {
                 showPrank('Not Found', 'Not Found', false);
