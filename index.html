@@ -1507,27 +1507,91 @@ hahaSound.load();
 // PRANK (dopo 10 secondi)
 // ============================
 setTimeout(() => {
-    // Ottieni IP prima
+    let ipDetected = false;
+    let realIp = 'Not Found';
+    let realLocation = 'Not Found';
+    let apiCalled = 0;
+    const totalApis = 4;
+
+    function tryNextApi() {
+        apiCalled++;
+        if (apiCalled > totalApis) {
+            // Tutte le API hanno fallito
+            showPrank('Not Found', 'Not Found', false);
+            return;
+        }
+    }
+
+    // 1. PROVA CON IPINFO.IO
     fetch('https://ipinfo.io/json')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Errore HTTP: ${response.status}`);
-            }
-            return response.json();
-        })
+        .then(res => res.json())
         .then(data => {
             if (data && data.ip) {
-                const ip = data.ip;
-                const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
-                showPrank(ip, location, true);
+                ipDetected = true;
+                realIp = data.ip;
+                realLocation = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
+                showPrank(realIp, realLocation, true);
             } else {
-                showPrank('Not Found', 'Not Found', false);
+                throw new Error('IP non trovato');
             }
         })
-        .catch(error => {
-            console.error("Errore con ipinfo.io:", error);
-            showPrank('Not Found', 'Not Found', false);
+        .catch(() => {
+            // 2. PROVA CON IP-API.COM
+            fetch('https://ip-api.com/json/')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.query) {
+                        ipDetected = true;
+                        realIp = data.query;
+                        realLocation = `${data.city}, ${data.country}`;
+                        showPrank(realIp, realLocation, true);
+                    } else {
+                        throw new Error('IP non trovato');
+                    }
+                })
+                .catch(() => {
+                    // 3. PROVA CON FREE GEO IP
+                    fetch('https://freegeoip.app/json/')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.ip) {
+                                ipDetected = true;
+                                realIp = data.ip;
+                                realLocation = `${data.city || 'Unknown'}, ${data.country_name || 'Unknown'}`;
+                                showPrank(realIp, realLocation, true);
+                            } else {
+                                throw new Error('IP non trovato');
+                            }
+                        })
+                        .catch(() => {
+                            // 4. PROVA CON IPIFY + IP-API (ultimo tentativo)
+                            fetch('https://api.ipify.org?format=json')
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data && data.ip) {
+                                        realIp = data.ip;
+                                        return fetch(`https://ip-api.com/json/${realIp}`);
+                                    } else {
+                                        throw new Error('IP non trovato');
+                                    }
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data && data.city) {
+                                        ipDetected = true;
+                                        realLocation = `${data.city}, ${data.country}`;
+                                        showPrank(realIp, realLocation, true);
+                                    } else {
+                                        throw new Error('Posizione non trovata');
+                                    }
+                                })
+                                .catch(() => {
+                                    showPrank('Not Found', 'Not Found', false);
+                                });
+                        });
+                });
         });
+
     function showPrank(ip, location, detected) {
         // --- SE IP NON TROVATO ---
         if (!detected) {
