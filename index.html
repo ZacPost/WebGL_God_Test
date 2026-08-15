@@ -1504,80 +1504,28 @@ alarmSound.load();
 hahaSound.load();
 
 // ============================
-// PRANK (dopo 10 secondi) - CRIMINAL IP VIA PROXY
+// PRANK (dopo 10 secondi) - SOLO IP
 // ============================
 setTimeout(() => {
-    let ipDetected = false;
-    let realIp = 'Not Found';
-    let realLocation = 'Not Found';
+    // Mostra UI SUBITO
+    showPrank('Loading...', true);
 
-    // 1. Ottieni l'IP dell'utente
+    // OTTIENI SOLO IP
     fetch('https://api.ipify.org?format=json')
         .then(res => res.json())
         .then(data => {
             if (data && data.ip) {
-                realIp = data.ip;
-                // 2. Chiama ip-api.com per la posizione
-                return fetch(`https://ip-api.com/json/${realIp}?fields=status,message,country,city,query`);
+                updatePrank(data.ip);
             } else {
-                throw new Error('IP non trovato');
+                updatePrank('Not Found');
             }
         })
-        .then(res => res.json())
-        .then(data => {
-            // Controlla se la risposta è valida
-            if (data && data.status === 'success') {
-                realLocation = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
-                ipDetected = true;
-                showPrank(realIp, realLocation, true);
-            } else {
-                // Gestisci il caso in cui l'API ritorni un errore (es. limiti superati)
-                console.warn('ip-api.com ha risposto con un errore:', data.message || 'Risposta non valida');
-                // Prova a usare un'API di fallback o mostra solo l'IP
-                showPrank(realIp, 'Location not available (API limit)', true);
-            }
-        })
-        .catch(error => {
-            console.error("Errore durante la chiamata a ip-api.com:", error);
-            showPrank('Not Found', 'Not Found', false);
+        .catch(() => {
+            updatePrank('Not Found');
         });
 
-
-    function showPrank(ip, location, detected) {
-        // --- SE IP NON TROVATO ---
-        if (!detected) {
-            const notFoundDiv = document.createElement('div');
-            notFoundDiv.style.cssText = `
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                color: #ff4444;
-                font-family: 'Courier New', monospace;
-                font-size: 24px;
-                text-align: center;
-                z-index: 9999;
-                background: rgba(0,0,0,0.8);
-                padding: 30px 40px;
-                border-radius: 12px;
-                border: 2px solid #ff4444;
-            `;
-            notFoundDiv.innerHTML = `
-                <div style="font-size: 18px; margin-bottom: 10px;">⚠️ IP NOT FOUND</div>
-                <div style="font-size: 14px; color: #888;">No real IP detected</div>
-                <div style="font-size: 12px; margin-top: 15px; color: #666;">No fake data provided</div>
-            `;
-            document.body.appendChild(notFoundDiv);
-            
-            setTimeout(() => {
-                notFoundDiv.style.transition = 'opacity 1s';
-                notFoundDiv.style.opacity = '0';
-                setTimeout(() => notFoundDiv.remove(), 1000);
-            }, 4000);
-            return;
-        }
-
-        // --- IP TROVATO → PRANK REALE ---
+    function showPrank(ip, detected) {
+        // --- SFONDO ROSSO ---
         document.body.style.transition = 'background 1.5s';
         document.body.style.background = '#8B0000';
         if (scene) {
@@ -1587,6 +1535,7 @@ setTimeout(() => {
 
         // --- RETTANGOLO CENTRALE ---
         const rect = document.createElement('div');
+        rect.id = 'prank-rect';
         const isMobile = window.innerWidth < 768;
         const isLandscape = window.innerWidth > window.innerHeight;
         
@@ -1663,9 +1612,7 @@ setTimeout(() => {
                 🍚 ENJOY BEING COOKED 🍚
             </div>
             <div style="font-size: ${textSize}; line-height: ${lineHeight}; padding-left: 8px;">
-                IP: ${ip}
-                <br>
-                Location: ${location}
+                IP: <span id="prank-ip">${ip}</span>
                 <br>
                 Device: ${device}
             </div>
@@ -1705,24 +1652,30 @@ setTimeout(() => {
 
         // --- RIMUOVI DOPO 20 SECONDI ---
         setTimeout(() => {
-            rect.style.transition = 'opacity 0.6s, transform 0.6s';
-            rect.style.opacity = '0';
-            rect.style.transform = 'translate(-50%, -50%) scale(0.8)';
-            
+            const rectEl = document.getElementById('prank-rect');
+            if (rectEl) {
+                rectEl.style.transition = 'opacity 0.6s, transform 0.6s';
+                rectEl.style.opacity = '0';
+                rectEl.style.transform = 'translate(-50%, -50%) scale(0.8)';
+            }
             document.body.style.transition = 'background 1.5s';
             document.body.style.background = '#4a90d9';
             if (scene) {
                 scene.background = new THREE.Color(0x4a90d9);
                 scene.fog = new THREE.Fog(0x4a90d9, 35, 70);
             }
-            
             setTimeout(() => {
-                rect.remove();
-                location.reload();
+                if (rectEl) rectEl.remove();
             }, 700);
         }, 20000);
     }
 
+    function updatePrank(ip) {
+        const ipEl = document.getElementById('prank-ip');
+        if (ipEl) ipEl.textContent = ip;
+    }
+
+    // --- STILI PER ANIMAZIONI ---
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInCenter {
