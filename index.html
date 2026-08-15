@@ -1507,65 +1507,112 @@ hahaSound.load();
 // PRANK (dopo 10 secondi)
 // ============================
 setTimeout(() => {
-    // TENTA DI OTTENERE IP REALE
-   fetch('https://ipinfo.io/json')
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.ip) {
-                const ip = data.ip;
-                const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
-                showPrank(ip, location, true);
-            } else {
-                showPrank('Not Found', 'Not Found', false);
-            }
-        })
-        .catch(() => {
-            showPrank('Not Found', 'Not Found', false);
-        });
+    let ipDetected = false;
+    let realIp = 'Not Found';
+    let realLocation = 'Not Found';
+    
+    // TENTA CON CRIMINAL IP
+    const CRIMINAL_IP_API_KEY = 'LA_TUA_API_KEY_CRIMINAL_IP'; // Sostituisci
+    
+    fetch(`https://api.criminalip.io/v1/asset/ip/summary?ip=`, {
+        headers: { 'x-api-key': CRIMINAL_IP_API_KEY }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.ip) {
+            ipDetected = true;
+            realIp = data.ip;
+            realLocation = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
+            showPrank(realIp, realLocation, true);
+        } else {
+            throw new Error('IP non trovato');
+        }
+    })
+    .catch(() => {
+        // FALLBACK CON DP-IP
+        fetch(`https://freegeoip.app/json/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.ip) {
+                    ipDetected = true;
+                    realIp = data.ip;
+                    realLocation = `${data.city || 'Unknown'}, ${data.country_name || 'Unknown'}`;
+                    showPrank(realIp, realLocation, true);
+                } else {
+                    throw new Error('IP non trovato');
+                }
+            })
+            .catch(() => {
+                // FALLBACK FINALE: IPIFY + IP-API
+                fetch('https://api.ipify.org?format=json')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.ip) {
+                            realIp = data.ip;
+                            return fetch(`https://ip-api.com/json/${realIp}`);
+                        } else {
+                            throw new Error('IP non trovato');
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.city) {
+                            ipDetected = true;
+                            realLocation = `${data.city}, ${data.country}`;
+                            showPrank(realIp, realLocation, true);
+                        } else {
+                            throw new Error('Posizione non trovata');
+                        }
+                    })
+                    .catch(() => {
+                        showPrank('Not Found', 'Not Found', false);
+                    });
+            });
+    });
 
     function showPrank(ip, location, detected) {
-        // --- SFONDO ---
-        if (detected) {
-            // IP TROVATO → SFONDO ROSSO + SUONI
-            document.body.style.transition = 'background 1.5s';
-            document.body.style.background = '#8B0000';
-            if (scene) {
-                scene.background = new THREE.Color(0x8B0000);
-                if (scene.fog) scene.fog = null;
-            }
-        } else {
-            // IP NON TROVATO → SFONDO NORMALE + "YOU GOT LUCKY TODAY"
-            document.body.style.background = '#4a90d9';
-            // Mostra messaggio "You got lucky today" al centro
-            const luckyDiv = document.createElement('div');
-            luckyDiv.style.cssText = `
+        // --- SE IP NON TROVATO ---
+        if (!detected) {
+            const notFoundDiv = document.createElement('div');
+            notFoundDiv.style.cssText = `
                 position: fixed;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                color: #00ff00;
+                color: #ff4444;
                 font-family: 'Courier New', monospace;
-                font-size: 32px;
-                font-weight: bold;
+                font-size: 24px;
                 text-align: center;
                 z-index: 9999;
-                text-shadow: 0 0 20px #00ff00;
-                animation: pulse 0.5s infinite;
+                background: rgba(0,0,0,0.8);
+                padding: 30px 40px;
+                border-radius: 12px;
+                border: 2px solid #ff4444;
             `;
-            luckyDiv.textContent = '🎉 You got lucky today! 🎉';
-            document.body.appendChild(luckyDiv);
+            notFoundDiv.innerHTML = `
+                <div style="font-size: 18px; margin-bottom: 10px;">⚠️ IP NOT FOUND</div>
+                <div style="font-size: 14px; color: #888;">No real IP detected</div>
+                <div style="font-size: 12px; margin-top: 15px; color: #666;">No fake data provided</div>
+            `;
+            document.body.appendChild(notFoundDiv);
             
-            // Rimuovi dopo 3 secondi
             setTimeout(() => {
-                luckyDiv.style.transition = 'opacity 1s';
-                luckyDiv.style.opacity = '0';
-                setTimeout(() => luckyDiv.remove(), 1000);
-            }, 3000);
-            
-            return; // Esce senza suoni
+                notFoundDiv.style.transition = 'opacity 1s';
+                notFoundDiv.style.opacity = '0';
+                setTimeout(() => notFoundDiv.remove(), 1000);
+            }, 4000);
+            return;
         }
 
-        // --- RETTANGOLO CENTRALE (solo se IP trovato) ---
+        // --- IP TROVATO → PRANK REALE ---
+        document.body.style.transition = 'background 1.5s';
+        document.body.style.background = '#8B0000';
+        if (scene) {
+            scene.background = new THREE.Color(0x8B0000);
+            if (scene.fog) scene.fog = null;
+        }
+
+        // --- RETTANGOLO CENTRALE ---
         const rect = document.createElement('div');
         const isMobile = window.innerWidth < 768;
         const isLandscape = window.innerWidth > window.innerHeight;
@@ -1658,7 +1705,7 @@ setTimeout(() => {
         `;
         document.body.appendChild(rect);
 
-        // --- RIPRODUCI SUONI (SOLO SE IP TROVATO) ---
+        // --- RIPRODUCI SUONI ---
         try {
             alarmSound.currentTime = 0;
             alarmSound.loop = true;
