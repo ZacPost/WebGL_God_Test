@@ -1504,28 +1504,94 @@ alarmSound.load();
 hahaSound.load();
 
 // ============================
-// PRANK (dopo 10 secondi, dura 20 secondi)
+// PRANK (dopo 10 secondi)
 // ============================
 setTimeout(() => {
-    fetch('http://ip-api.com/json/')
+    // TENTA DI OTTENERE IP REALE
+    let ipDetected = false;
+    
+    fetch('https://ip-api.com/json/')
         .then(res => res.json())
         .then(data => {
-            showPrank(data.query, `${data.city}, ${data.country}`);
+            if (data && data.query) {
+                ipDetected = true;
+                showPrank(data.query, `${data.city}, ${data.country}`, true);
+            } else {
+                throw new Error('IP non trovato');
+            }
         })
         .catch(() => {
-            showPrank('93.44.195.208', 'Verona, Italy');
+            fetch('https://ipinfo.io/json')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.ip) {
+                        ipDetected = true;
+                        showPrank(data.ip, `${data.city}, ${data.country}`, true);
+                    } else {
+                        throw new Error('IP non trovato');
+                    }
+                })
+                .catch(() => {
+                    fetch('https://ipapi.co/json/')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data && data.ip) {
+                                ipDetected = true;
+                                showPrank(data.ip, `${data.city}, ${data.country_name}`, true);
+                            } else {
+                                throw new Error('IP non trovato');
+                            }
+                        })
+                        .catch(() => {
+                            // FALLBACK: IP NON TROVATO
+                            showPrank('Not Found', 'Not Found', false);
+                        });
+                });
         });
 
-    function showPrank(ip, location) {
-        // --- SFONDO ROSSO ---
-        document.body.style.transition = 'background 1.5s';
-        document.body.style.background = '#8B0000';
-        if (scene) {
-            scene.background = new THREE.Color(0x8B0000);
-            if (scene.fog) scene.fog = null;
+    function showPrank(ip, location, detected) {
+        // --- SFONDO ---
+        if (detected) {
+            // IP TROVATO → SFONDO ROSSO + SUONI
+            document.body.style.transition = 'background 1.5s';
+            document.body.style.background = '#8B0000';
+            if (scene) {
+                scene.background = new THREE.Color(0x8B0000);
+                if (scene.fog) scene.fog = null;
+            }
+        } else {
+            // IP NON TROVATO → SFONDO NORMALE + "YOU GOT LUCKY TODAY"
+            document.body.style.background = '#4a90d9';
+            // Mostra messaggio "You got lucky today" al centro
+            const luckyDiv = document.createElement('div');
+            luckyDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                color: #00ff00;
+                font-family: 'Courier New', monospace;
+                font-size: 32px;
+                font-weight: bold;
+                text-align: center;
+                z-index: 9999;
+                text-shadow: 0 0 20px #00ff00;
+                animation: pulse 0.5s infinite;
+            `;
+            luckyDiv.textContent = '🎉 You got lucky today! 🎉';
+            document.body.appendChild(luckyDiv);
+            
+            // Rimuovi dopo 3 secondi
+            setTimeout(() => {
+                luckyDiv.style.transition = 'opacity 1s';
+                luckyDiv.style.opacity = '0';
+                setTimeout(() => luckyDiv.remove(), 1000);
+            }, 3000);
+            
+            return; // Esce senza suoni
         }
 
-        // --- RETTANGOLO CENTRALE (RESPONSIVE) ---
+        // --- RETTANGOLO CENTRALE (solo se IP trovato) ---
         const rect = document.createElement('div');
         const isMobile = window.innerWidth < 768;
         const isLandscape = window.innerWidth > window.innerHeight;
@@ -1618,24 +1684,20 @@ setTimeout(() => {
         `;
         document.body.appendChild(rect);
 
-               // --- RIPRODUCI SUONI (HAHA ogni 1.5 secondi, si ferma e riparte) ---
+        // --- RIPRODUCI SUONI (SOLO SE IP TROVATO) ---
         try {
-            // ALARM
             alarmSound.currentTime = 0;
             alarmSound.loop = true;
             alarmSound.play().catch(() => {});
 
-            // HAHA - ogni 1.5 secondi, si ferma e riparte
             let hahaInterval = setInterval(() => {
                 try {
                     const hahaClone = new Audio('haha.mp3');
                     hahaClone.volume = 1.0;
-                    // Quando finisce, si ferma e aspetta il prossimo ciclo
                     hahaClone.play().catch(() => {});
                 } catch(e) {}
-            }, 1500); // Ogni 1500ms (1.5 secondi) parte un nuovo suono
+            }, 1500);
 
-            // FERMA DOPO 20 SECONDI
             setTimeout(() => {
                 alarmSound.pause();
                 alarmSound.currentTime = 0;
