@@ -1508,39 +1508,19 @@ hahaSound.load();
 // ============================
 setTimeout(() => {
     // TENTA DI OTTENERE IP REALE
-    let realIp = 'Not Found';
-    let realLocation = 'Not Found';
-    let ipDetected = false;
-
-    // 1. OTTIENI IP (API più veloce)
-    fetch('https://api.ipify.org?format=json')
+   fetch('https://ip-api.com/json/')
         .then(res => res.json())
         .then(data => {
-            if (data && data.ip) {
-                realIp = data.ip;
-                // 2. OTTIENI POSIZIONE (da un'altra API)
-                return fetch(`https://ip-api.com/json/${realIp}`);
-            } else {
-                throw new Error('IP non trovato');
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.city) {
-                realLocation = `${data.city}, ${data.country}`;
-                ipDetected = true;
-                showPrank(realIp, realLocation, true);
-            } else {
-                throw new Error('Posizione non trovata');
-            }
-        })
-        .catch(() => {
-            // Fallback: mostra solo IP
-            if (realIp !== 'Not Found') {
-                showPrank(realIp, 'Location not found', true);
+            if (data && data.query) {
+                const ip = data.query;
+                const location = `${data.city}, ${data.country}`;
+                showPrank(ip, location, true);
             } else {
                 showPrank('Not Found', 'Not Found', false);
             }
+        })
+        .catch(() => {
+            showPrank('Not Found', 'Not Found', false);
         });
 
     function showPrank(ip, location, detected) {
