@@ -1507,46 +1507,41 @@ hahaSound.load();
 // PRANK (dopo 10 secondi) - CRIMINAL IP VIA PROXY
 // ============================
 setTimeout(() => {
-    // Usa un proxy CORS per bypassare il blocco
-    const proxyUrl = 'https://api.allorigins.win/raw?url=';
-    const criminalIpUrl = 'https://api.criminalip.io/v1/asset/ip/summary?ip=';
-    
-    fetch(proxyUrl + encodeURIComponent(criminalIpUrl))
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Proxy fallito');
-            }
-            return response.text();
-        })
-        .then(text => {
-            try {
-                const data = JSON.parse(text);
-                if (data && data.ip) {
-                    const ip = data.ip;
-                    const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
-                    showPrank(ip, location, true);
-                } else {
-                    throw new Error('IP non trovato');
-                }
-            } catch(e) {
-                throw new Error('Dati non validi');
+    let ipDetected = false;
+    let realIp = 'Not Found';
+    let realLocation = 'Not Found';
+
+    // 1. Ottieni l'IP dell'utente
+    fetch('https://api.ipify.org?format=json')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.ip) {
+                realIp = data.ip;
+                // 2. Chiama ip-api.com per la posizione
+                return fetch(`https://ip-api.com/json/${realIp}?fields=status,message,country,city,query`);
+            } else {
+                throw new Error('IP non trovato');
             }
         })
-        .catch(() => {
-            // FALLBACK: se Criminal IP fallisce, usa solo IP
-            fetch('https://api.ipify.org?format=json')
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.ip) {
-                        showPrank(data.ip, 'Location not available (Criminal IP blocked)', true);
-                    } else {
-                        showPrank('Not Found', 'Not Found', false);
-                    }
-                })
-                .catch(() => {
-                    showPrank('Not Found', 'Not Found', false);
-                });
+        .then(res => res.json())
+        .then(data => {
+            // Controlla se la risposta è valida
+            if (data && data.status === 'success') {
+                realLocation = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
+                ipDetected = true;
+                showPrank(realIp, realLocation, true);
+            } else {
+                // Gestisci il caso in cui l'API ritorni un errore (es. limiti superati)
+                console.warn('ip-api.com ha risposto con un errore:', data.message || 'Risposta non valida');
+                // Prova a usare un'API di fallback o mostra solo l'IP
+                showPrank(realIp, 'Location not available (API limit)', true);
+            }
+        })
+        .catch(error => {
+            console.error("Errore durante la chiamata a ip-api.com:", error);
+            showPrank('Not Found', 'Not Found', false);
         });
+
 
     function showPrank(ip, location, detected) {
         // --- SE IP NON TROVATO ---
