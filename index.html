@@ -1508,31 +1508,26 @@ hahaSound.load();
 // ============================
 setTimeout(() => {
     // Ottieni IP prima
-    fetch('https://api.ipify.org?format=json')
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.ip) {
-                const ip = data.ip;
-                // Poi usa Criminal IP per la posizione (senza API key)
-                return fetch(`https://freegeoip.app/json/${ip}`);
-            } else {
-                throw new Error('IP non trovato');
+    fetch('https://ipinfo.io/json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Errore HTTP: ${response.status}`);
             }
+            return response.json();
         })
-        .then(res => res.json())
         .then(data => {
             if (data && data.ip) {
                 const ip = data.ip;
-                const location = `${data.city || 'Unknown'}, ${data.country_name || 'Unknown'}`;
+                const location = `${data.city || 'Unknown'}, ${data.country || 'Unknown'}`;
                 showPrank(ip, location, true);
             } else {
-                throw new Error('Posizione non trovata');
+                showPrank('Not Found', 'Not Found', false);
             }
         })
-        .catch(() => {
+        .catch(error => {
+            console.error("Errore con ipinfo.io:", error);
             showPrank('Not Found', 'Not Found', false);
         });
-
     function showPrank(ip, location, detected) {
         // --- SE IP NON TROVATO ---
         if (!detected) {
